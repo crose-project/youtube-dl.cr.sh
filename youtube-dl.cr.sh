@@ -5,7 +5,8 @@
 #
 # $1: youtube identifier, or URL
 #
-# Required: youtube-dl, eyeD3
+# * https://github.com/ytdl-org/youtube-dl
+# Local install required: youtube-dl, eyeD3
 
 DOWNLOAD_FAILED=download.failed.log
 
