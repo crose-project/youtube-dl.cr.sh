@@ -7,7 +7,7 @@
 #
 # Wrapper for https://github.com/ytdl-org/youtube-dl
 #
-# Local install required: youtube-dl, eyeD3
+# Local install required: youtube-dl, eyed3, webp (provides: dwebp)
 
 DOWNLOAD_FAILED=download.failed.log
 TIMESTAMP=''
@@ -22,8 +22,11 @@ function download() {
   [ -z "$1" ] && return
    
   # '--xattrs' only useful to have a reference where the file is from.
-#             --metadata-from-title "(?P<artist>.+?) - (?P<title>.+)" 
-  youtube-dl -x --restrict-filenames --embed-thumbnail --audio-format mp3 \
+  #             --metadata-from-title "(?P<artist>.+?) - (?P<title>.+)" 
+  
+  # CR 26.6.20: removed '--embed-thumbnail' cause the YT webp image can't be handled by youtube-dl
+  youtube-dl -x --restrict-filenames --audio-format mp3 \
+             --write-thumbnail \
              --metadata-from-title "%(artist)s - %(title)s" \
              --youtube-skip-dash-manifest \
              --xattrs "$1" 2>&1 | tee  $OUT
@@ -39,13 +42,30 @@ function download() {
     echo "$1" >> $DOWNLOAD_FAILED
     return
   fi
-
-  ARTIST="`grep '\[fromtitle\] parsed artist' $OUT | tr '"' "'" | cut -d ' ' -f 4-`"
-  TITLE="`grep '\[fromtitle\] parsed title' $OUT |  tr '"' "'" | cut -d ' ' -f 4-`"
+  
   FILE="`grep '\[ffmpeg\] Destination' $OUT | cut -d ' ' -f 3-`"
   YEAR="`getfattr -n user.dublincore.date $FILE | grep 'user.dublincore.date=' | cut -c23-26`" 
+  
+  # Replace '.mp3' by '.webp'
+  THUMBNAIL="${FILE%.*}.webp"
 
-  eyeD3 -t "$TITLE" -A "$TITLE-$ARTIST" -a "$ARTIST" -Y "$YEAR" -n 1 $FILE
+  grep 'Could not interpret title of video as' $OUT > /dev/null
+  if [ $? -eq 0 ] ; then
+    # Title could not be splitted: take everything upto first '-'. Example: Syria_Original-lmbY--Br7B4.mp3
+    ARTIST="`echo "$FILE" | cut -d '-' -f 1`"
+    TITLE="$ARTIST"
+  else
+    ARTIST="`grep '\[fromtitle\] parsed artist' $OUT | tr '"' "'" | cut -d ' ' -f 4-`"
+    TITLE="`grep '\[fromtitle\] parsed title' $OUT |  tr '"' "'" | cut -d ' ' -f 4-`"
+  fi  
+  
+  
+  dwebp ${THUMBNAIL} -o thumbnail.png
+  convert 'thumbnail.png[400x>]' thumbnail.jpg
+  eyeD3 -t "$TITLE" -A "$TITLE-$ARTIST" -a "$ARTIST" -Y "$YEAR" --add-image=thumbnail.jpg:OTHER -n 1 $FILE
+  
+  rm ${THUMBNAIL} thumbnail.png thumbnail.jpg
+  
   
 }
 
@@ -99,3 +119,4 @@ fi
 
 # Wait for stdin
 perLine
+
