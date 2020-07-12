@@ -69,21 +69,19 @@ function download() {
 #
 # Convert webp to png. 
 # Convert gif png jpg tif to thumbnail.jpg with width=400
+# Result is always: thumbnail.jpg
 #
 function doThumbnail() {
 
   local FILE="$1"
 
-  # Replace '.mp3' by '.webp'
-  THUMBNAIL="${FILE%.*}.webp"
+  # IM can't convert WEBP: convert to PNG first.
+  [ -r "${FILE%.*}.webp" ] && dwebp "${FILE%.*}.webp" -o ${FILE%.*}.png && rm "${FILE%.*}.webp"
 
-  [ -r "${FILE%.*}.webp" ] && dwebp ${THUMBNAIL} -o ${FILE%.*}.png
-
+  # Check for all image types: resize and convert to JPG/400px. Target is always 'thumbnail.jpg'
   for II in gif png jpg tif ; do
     [ -r "${FILE%.*}.$II" ] && convert "${FILE%.*}.${II}[400x>]" thumbnail.jpg && rm "${FILE%.*}.${II}"
   done
-
-  [ -r ${FILE%.*}.webp ] && rm "${FILE%.*}.webp"
 }
 
 #
