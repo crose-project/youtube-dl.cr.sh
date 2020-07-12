@@ -9,7 +9,7 @@
 #
 # Local install required: youtube-dl, eyed3, webp (provides: dwebp)
 
-DOWNLOAD_FAILED=download.failed.log
+DOWNLOAD_FAILED=.ytdl.download.failed.log
 TIMESTAMP=''
 
 #
@@ -17,14 +17,15 @@ TIMESTAMP=''
 # eyeD3: set MP3 tags
 #
 function download() {
-  local OUT=ytdl.out
+  local OUT=.ytdl.out
  
   [ -z "$1" ] && return
    
   # '--xattrs' only useful to have a reference where the file is from.
   #             --metadata-from-title "(?P<artist>.+?) - (?P<title>.+)" 
   
-  # CR 26.6.20: removed '--embed-thumbnail' cause the YT webp image can't be handled by youtube-dl
+  # CR 26.6.20: removed '--embed-thumbnail' cause the YT webp image can't be handled by youtube-dl. 
+  # Also it's better to scale down the thumbnail fix to 400px width to limit filesize.
   youtube-dl -x --restrict-filenames --audio-format mp3 \
              --write-thumbnail \
              --metadata-from-title "%(artist)s - %(title)s" \
@@ -46,9 +47,6 @@ function download() {
   FILE="`grep '\[ffmpeg\] Destination' $OUT | cut -d ' ' -f 3-`"
   YEAR="`getfattr -n user.dublincore.date $FILE | grep 'user.dublincore.date=' | cut -c23-26`" 
   
-  # Replace '.mp3' by '.webp'
-  THUMBNAIL="${FILE%.*}.webp"
-
   grep 'Could not interpret title of video as' $OUT > /dev/null
   if [ $? -eq 0 ] ; then
     # Title could not be splitted: take everything upto first '-'. Example: Syria_Original-lmbY--Br7B4.mp3
@@ -59,14 +57,33 @@ function download() {
     TITLE="`grep '\[fromtitle\] parsed title' $OUT |  tr '"' "'" | cut -d ' ' -f 4-`"
   fi  
   
-  
-  dwebp ${THUMBNAIL} -o thumbnail.png
-  convert 'thumbnail.png[400x>]' thumbnail.jpg
+  doThumbnail $FILE
+
   eyeD3 -t "$TITLE" -A "$TITLE-$ARTIST" -a "$ARTIST" -Y "$YEAR" --add-image=thumbnail.jpg:OTHER -n 1 $FILE
   
-  rm ${THUMBNAIL} thumbnail.png thumbnail.jpg
-  
-  
+  rm thumbnail.jpg
+}
+
+#
+# doThumbnail()
+#
+# Convert webp to png. 
+# Convert gif png jpg tif to thumbnail.jpg with width=400
+#
+function doThumbnail() {
+
+  local FILE="$1"
+
+  # Replace '.mp3' by '.webp'
+  THUMBNAIL="${FILE%.*}.webp"
+
+  [ -r "${FILE%.*}.webp" ] && dwebp ${THUMBNAIL} -o ${FILE%.*}.png
+
+  for II in gif png jpg tif ; do
+    [ -r "${FILE%.*}.$II" ] && convert "${FILE%.*}.${II}[400x>]" thumbnail.jpg && rm "${FILE%.*}.${II}"
+  done
+
+  [ -r ${FILE%.*}.webp ] && rm "${FILE%.*}.webp"
 }
 
 #
