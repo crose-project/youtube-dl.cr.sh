@@ -7,7 +7,7 @@
 #
 # Wrapper for https://github.com/ytdl-org/youtube-dl
 #
-# Local install required: youtube-dl, eyed3, webp (provides: dwebp)
+# Local install required: youtube-dl, eyed3 (provides: eyeD3), webp (provides: dwebp)
 
 DOWNLOAD_FAILED=.ytdl.download.failed.log
 TIMESTAMP=''
@@ -65,6 +65,19 @@ function download() {
 }
 
 #
+# Check if all required programs are installed.
+#
+function checkRequirements() {
+  for II in eyeD3 dwebp getfattr ; do
+		which $II > /dev/null
+    [ $? -ne 0 ] && echo 'Please install: apt install youtube-dl eyed3 webp attr' && exit 1
+  done
+
+  which youtube-dl > /dev/null
+  [ $? -ne 0 ] && echo 'Please install: youtube-dl .... https://ytdl-org.github.io/youtube-dl/download.html' && exit 1
+}
+
+#
 # doThumbnail()
 #
 # Convert webp to png. 
@@ -115,6 +128,8 @@ if [ 'x-h' == "x$1" ] ; then
   echo "       Failed downloads logged to $DOWNLOAD_FAILED"
   return 0
 fi
+
+checkRequirements
 
 # Download given as argument?
 if [ ! -z "$1" ] ; then
