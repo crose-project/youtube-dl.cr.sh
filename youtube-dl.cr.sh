@@ -7,7 +7,9 @@
 #
 # Wrapper for https://github.com/ytdl-org/youtube-dl
 #
-# Local install required: youtube-dl, eyed3 (provides: eyeD3), webp (provides: dwebp)
+# Local install required: youtube-dl
+#
+# apt install eyed3 webp ffmpeg
 
 DOWNLOAD_FAILED=.ytdl.download.failed.log
 TIMESTAMP=''
